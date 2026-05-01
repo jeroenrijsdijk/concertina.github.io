@@ -98,13 +98,9 @@ See [`todo.md`](todo.md) for the current wish list.
 
 ## History
 
-Originally written in Ruby in 2015–2018 under the name **MUPHIN**. Refactored and ported to a web tool in 2024.
+Originally written in Ruby in 2015–2018. Refactored and ported to a web tool in 2026, with a lot of help from Claude AI.
 
 ## License
 
-MIT License — Copyright (c) 2024 MUPHIN
+MIT License — Copyright (c) 2024 jeroenrijsdijk
 
-## Support
-
-If this tool is useful to you, consider buying the author a coffee:
-[paypal.me/muphin](https://www.paypal.me/muphin)
