@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Concertina Fingering</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.2.3/abcjs-min.js"></script>
 <style>
   :root {
     --bg:       #ddd8d0;
@@ -174,6 +175,57 @@
 
   .hidden { display: none; }
 
+  /* abcjs notation + player overrides */
+  #abc-notation svg { max-width: 100%; height: auto; }
+  .abcjs-inline-audio {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .abcjs-inline-audio .abcjs-midi-start,
+  .abcjs-inline-audio .abcjs-midi-reset {
+    font-family: 'Oswald', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: var(--accent);
+    color: #f0ebe3;
+    border: none;
+    padding: 6px 14px;
+    cursor: pointer;
+  }
+  .abcjs-inline-audio .abcjs-midi-start:hover,
+  .abcjs-inline-audio .abcjs-midi-reset:hover { background: #2a2018; }
+  .abcjs-inline-audio progress {
+    flex: 1;
+    min-width: 80px;
+    height: 6px;
+    accent-color: var(--accent);
+  }
+  .abcjs-inline-audio .abcjs-tempo-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .abcjs-inline-audio .abcjs-tempo-wrapper input[type=range] {
+    accent-color: var(--accent);
+    width: 80px;
+  }
+  #player-status {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    min-height: 16px;
+  }
+
   /* Fullscreen modal */
   #fs-overlay {
     display: none;
@@ -294,6 +346,16 @@ GAG GAB|ABA ABd|egd edB|dBAA2B:|</textarea>
 
   <!-- Results -->
   <div id="results" class="hidden">
+
+    <!-- Notation + Player -->
+    <div class="row" style="margin-bottom:14px;">
+      <div class="panel" style="flex:1; min-width:300px;">
+        <div class="panel-title">Sheet Music &amp; Playback</div>
+        <div id="abc-notation"></div>
+        <div id="abc-player"></div>
+        <div id="player-status"></div>
+      </div>
+    </div>
 
     <div class="row">
       <!-- Route table -->
@@ -992,6 +1054,48 @@ function saveImage() {
   link.click();
 }
 
+// =============================================================================
+//  Notation + Playback (abcjs)
+// =============================================================================
+let synthController = null;
+
+async function renderNotation(abcText) {
+  const notationDiv = document.getElementById("abc-notation");
+  const playerDiv   = document.getElementById("abc-player");
+  const statusDiv   = document.getElementById("player-status");
+
+  // Render sheet music
+  const visualObjs = ABCJS.renderAbc("abc-notation", abcText, {
+    responsive: "resize",
+    add_classes: true,
+    staffwidth: Math.min(notationDiv.clientWidth || 700, 700)
+  });
+
+  playerDiv.innerHTML = "";
+  statusDiv.textContent = "";
+
+  if (!ABCJS.synth.supportsAudio()) {
+    statusDiv.textContent = "⚠ Web Audio not supported in this browser — playback unavailable.";
+    return;
+  }
+
+  try {
+    synthController = new ABCJS.synth.SynthController();
+    synthController.load("#abc-player", null, {
+      displayLoop:    false,
+      displayRestart: true,
+      displayPlay:    true,
+      displayProgress:true,
+      displayWarp:    true
+    });
+
+    await synthController.setTune(visualObjs[0], false, {});
+    statusDiv.textContent = "";
+  } catch(e) {
+    statusDiv.textContent = "Could not initialise audio: " + e.message;
+  }
+}
+
 function run() {
   const btn    = document.getElementById("run-btn");
   const status = document.getElementById("status");
@@ -1028,6 +1132,9 @@ function run() {
 
       document.getElementById("results").classList.remove("hidden");
       setStatus(`Done — ${notes.length} notes, ${nBest} best routes analysed.`, "ok");
+
+      // Notation + playback
+      renderNotation(text);
 
     } catch(e) {
       setStatus(e.message, "err");
