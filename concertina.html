@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Concertina Fingering</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.2.3/abcjs-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/abcjs@6.2.3/bin/abcjs-min.js"></script>
 <style>
   :root {
     --bg:       #ddd8d0;
@@ -1064,18 +1064,35 @@ async function renderNotation(abcText) {
   const playerDiv   = document.getElementById("abc-player");
   const statusDiv   = document.getElementById("player-status");
 
-  // Render sheet music
-  const visualObjs = ABCJS.renderAbc("abc-notation", abcText, {
-    responsive: "resize",
-    add_classes: true,
-    staffwidth: Math.min(notationDiv.clientWidth || 700, 700)
-  });
-
-  playerDiv.innerHTML = "";
+  notationDiv.innerHTML = "";
+  playerDiv.innerHTML   = "";
   statusDiv.textContent = "";
 
-  if (!ABCJS.synth.supportsAudio()) {
-    statusDiv.textContent = "⚠ Web Audio not supported in this browser — playback unavailable.";
+  // Guard: library must be loaded
+  if (typeof ABCJS === "undefined") {
+    statusDiv.textContent = "⚠ abcjs library failed to load — check your internet connection.";
+    return;
+  }
+
+  // Render sheet music (id without #)
+  let visualObjs;
+  try {
+    visualObjs = ABCJS.renderAbc("abc-notation", abcText, {
+      responsive: "resize"
+    });
+  } catch(e) {
+    statusDiv.textContent = "⚠ Notation render failed: " + e.message;
+    return;
+  }
+
+  if (!visualObjs || !visualObjs[0]) {
+    statusDiv.textContent = "⚠ Could not parse ABC for notation.";
+    return;
+  }
+
+  // Guard: synth may not be available in all builds
+  if (!ABCJS.synth || !ABCJS.synth.supportsAudio()) {
+    statusDiv.textContent = "⚠ Web Audio not supported in this browser — notation shown, playback unavailable.";
     return;
   }
 
@@ -1088,11 +1105,10 @@ async function renderNotation(abcText) {
       displayProgress:true,
       displayWarp:    true
     });
-
     await synthController.setTune(visualObjs[0], false, {});
-    statusDiv.textContent = "";
   } catch(e) {
-    statusDiv.textContent = "Could not initialise audio: " + e.message;
+    statusDiv.textContent = "⚠ Audio init: " + e.message;
+    console.error("abcjs synth:", e);
   }
 }
 
